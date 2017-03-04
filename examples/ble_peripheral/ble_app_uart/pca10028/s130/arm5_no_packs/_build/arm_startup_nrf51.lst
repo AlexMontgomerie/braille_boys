@@ -402,18 +402,18 @@ util -I..\..\..\..\..\..\components\softdevice\common\softdevice_handler -I..\.
 .\..\..\..\..\components\softdevice\s130\headers -I..\..\..\..\..\..\components
 \softdevice\s130\headers\nrf51 -I..\..\..\..\..\..\components\toolchain -I..\..
 \..\..\..\..\external\segger_rtt -I..\config -IC:\Users\Alex\Documents\group_pr
-oject_y2\examples\ble_peripheral\ble_app_uart\pca10028\s130\arm5_no_packs\RTE\_
-nrf51422_xxac -IC:\Keil_v5\ARM\PACK\ARM\CMSIS\4.5.0\CMSIS\Include -IC:\Keil_v5\
-ARM\PACK\NordicSemiconductor\nRF_DeviceFamilyPack\8.11.1\Device\Include --prede
-fine="__EVAL SETA 1" --predefine="__MICROLIB SETA 1" --predefine="__UVISION_VER
-SION SETA 522" --predefine="_RTE_ SETA 1" --predefine="NRF51 SETA 1" --predefin
-e="BLE_STACK_SUPPORT_REQD SETA 1" --predefine="NRF51422 SETA 1" --predefine="BO
-ARD_PCA10028 SETA 1" --predefine="S130 SETA 1" --predefine="NRF_SD_BLE_API_VERS
-ION SETA 2" --predefine="NRF51 SETA 1" --predefine="SOFTDEVICE_PRESENT SETA 1" 
---predefine="SWI_DISABLE0 SETA 1" --cpreproc_opts=-DBLE_STACK_SUPPORT_REQD,-DNR
-F51422,-DBOARD_PCA10028,-DS130,-DNRF_SD_BLE_API_VERSION=2,-DNRF51,-DSOFTDEVICE_
-PRESENT,-DSWI_DISABLE0 --list=.\_build\arm_startup_nrf51.lst RTE\Device\nRF5142
-2_xxAC\arm_startup_nrf51.s
+oject_y2\braille_boys\examples\ble_peripheral\ble_app_uart\pca10028\s130\arm5_n
+o_packs\RTE\_nrf51422_xxac -IC:\Keil_v5\ARM\PACK\ARM\CMSIS\4.5.0\CMSIS\Include 
+-IC:\Keil_v5\ARM\PACK\NordicSemiconductor\nRF_DeviceFamilyPack\8.11.1\Device\In
+clude --predefine="__EVAL SETA 1" --predefine="__MICROLIB SETA 1" --predefine="
+__UVISION_VERSION SETA 522" --predefine="_RTE_ SETA 1" --predefine="NRF51 SETA 
+1" --predefine="BLE_STACK_SUPPORT_REQD SETA 1" --predefine="NRF51422 SETA 1" --
+predefine="BOARD_PCA10028 SETA 1" --predefine="S130 SETA 1" --predefine="NRF_SD
+_BLE_API_VERSION SETA 2" --predefine="NRF51 SETA 1" --predefine="SOFTDEVICE_PRE
+SENT SETA 1" --predefine="SWI_DISABLE0 SETA 1" --cpreproc_opts=-DBLE_STACK_SUPP
+ORT_REQD,-DNRF51422,-DBOARD_PCA10028,-DS130,-DNRF_SD_BLE_API_VERSION=2,-DNRF51,
+-DSOFTDEVICE_PRESENT,-DSWI_DISABLE0 --list=.\_build\arm_startup_nrf51.lst RTE\D
+evice\nRF51422_xxAC\arm_startup_nrf51.s
 
 
 

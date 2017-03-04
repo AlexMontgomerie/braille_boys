@@ -6,19 +6,37 @@
 #include "SEGGER_RTT.h"
 #include "app_fifo.h"
 
+
 #define BUFF_SIZE 255
+
+/**
+ * Our own error declerations
+ */
 #define MEM_ERROR 9
 
-static buffer 	m_raw_fifo;
-static buffer 	m_braille_fifo;
+/**
+ * Global fifo structures
+ */
+static buffer_t 	m_raw_fifo;
+static buffer_t 	m_braille_fifo;
 
+/**
+ * Static memory initialisation for buffers
+ */
 static uint8_t	raw_buf[BUFF_SIZE];
 static uint8_t 	braille_buf[BUFF_SIZE];
 
+/**
+ * Pointers to characters being pulled from the buffers
+ */
 static uint8_t *p_fifo_raw_character;
 static uint8_t *p_fifo_braille_character;
 
-/** Pin event to read recieved bytes
+
+
+
+/******************************************* 
+ * Pin event to read recieved bytes
  */
 void pin_read_event_handler(nrf_drv_gpiote_pin_t pin, nrf_gpiote_polarity_t action)
 {
@@ -35,7 +53,12 @@ void pin_read_event_handler(nrf_drv_gpiote_pin_t pin, nrf_gpiote_polarity_t acti
 	}
 	return;
 }
+/*******************************************/
 
+/*******************************************
+ *	pin event handlers
+ *	FIX ME should we only have one pin event handler with switch cases for all the pins?
+ */
 void pin_rx_event_handler(nrf_drv_gpiote_pin_t pin, nrf_gpiote_polarity_t action)
 {
 	SEGGER_RTT_printf(0,"\r\nPin Event\r\n");
@@ -47,6 +70,44 @@ void pin_tx_event_handler(nrf_drv_gpiote_pin_t pin, nrf_gpiote_polarity_t action
 	SEGGER_RTT_printf(0,"\r\ntx Pin Event: %d\r\n",pin);
 	return;
 }
+/*******************************************/
+
+
+
+
+
+
+/**
+	TODO maybe we just have a main pin event handler and main function call
+void main_event_handler(nrf_drv_gpiote_pin_t pin, nrf_gpiote_polarity_t action)
+{
+	switch pin
+	case MOTOR_INPUT_0
+	break
+
+	switch pin
+	case MOTOR_INPUT_1
+	break
+
+and so on
+
+	return;
+}
+
+void main_function() {
+	heres where everything happens
+}
+ */
+ 
+ 
+ 
+ 
+ 
+
+/** 
+ *	Initialising the input pins
+ *	FIX ME its a bit messy, can make prettier
+ */
 
 uint32_t add_input_pins(nrf_drv_gpiote_in_config_t * config)
 {
@@ -96,7 +157,21 @@ uint32_t add_input_pins(nrf_drv_gpiote_in_config_t * config)
 	return err_code;
 }
 
-uint32_t add_fifo(bbs_buffers_t * p_buffers)
+/** 
+ *	Initialising the output pins
+ */
+
+uint32_t add_output_pins(nrf_drv_gpiote_in_config_t * config)
+{
+	//FIX ME
+	uint32_t err_code;
+	return err_code;
+}
+
+/**
+ *	Function to initialise the buffers
+ */
+uint32_t add_fifo(void)
 {
 		m_raw_fifo.p_start = &raw_buf[0];
 		m_raw_fifo.P_end = &raw_buf[BUFF_SIZE];
@@ -107,10 +182,13 @@ uint32_t add_fifo(bbs_buffers_t * p_buffers)
 		m_braille_fifo.P_end = &raw_buf[BUFF_SIZE];
 		m_braille_fifo.read_pos = 0;
 		m_braille_fifo.write_pos = 0;
+	
+		return NRF_SUCCESS;
 }
 
 /** Function to put byte into raw character buffer
- *	@input byte of data
+ *	@input 	byte of data
+ * 	@output error code
  */
 uint32_t raw_fifo_put(uint8_t character)
 {
@@ -124,6 +202,10 @@ uint32_t raw_fifo_put(uint8_t character)
 	return NRF_SUCCESS;
 }
 
+/** Function to get byte from raw character buffer
+ *	@input 	pointer to data that will be pulled from buffer
+ * 	@output error code
+ */
 uint32_t raw_fifo_get(uint8_t * p_character)
 {
 	if(m_raw_fifo.read_pos>m_raw_fifo.write_pos)
@@ -141,7 +223,8 @@ uint32_t raw_fifo_get(uint8_t * p_character)
 }
 
 /** Function to put byte into braille character buffer
- *	@input byte of data
+ *	@input 	byte of data
+ * 	@output error code
  */
 uint32_t braille_fifo_put(uint8_t character)
 {
@@ -155,9 +238,10 @@ uint32_t braille_fifo_put(uint8_t character)
 	return NRF_SUCCESS;
 }
 
-/** Function to get 
-	@return 
-*/
+/** Function to get byte from braille character buffer
+ *	@input 	pointer to data that will be pulled from buffer
+ * 	@output error code
+ */
 uint32_t braille_fifo_get(uint8_t * p_character)
 {
 	if(m_braille_fifo.read_pos>m_braille_fifo.write_pos)
@@ -188,17 +272,28 @@ void bbs_init(void)
 	buffer.braille_buf 	= braille_buf;
 	buffer.braille_buf_size = sizeof(braille_buf);
 	*/
+	
+	//initialise gpio tasks and events
 	uint32_t err_code;
 	err_code = nrf_drv_gpiote_init();
   APP_ERROR_CHECK(err_code);
 	
+	/** 
+	 *	config for input pins 
+	 *		-detect low to high and transition
+	 *		-pull up on pin
+	 */
 	nrf_drv_gpiote_in_config_t config = GPIOTE_CONFIG_IN_SENSE_LOTOHI(true);
 	config.pull = NRF_GPIO_PIN_PULLUP;
 	
+	//adding input pins SEGGER_RTT_printf(0,"\r\nadding input pins!\r\n");	
 	err_code = add_input_pins(&config);
 	APP_ERROR_CHECK(err_code);
-  SEGGER_RTT_printf(0,"\r\nHERE!\r\n");	
-	//err_code = add_fifo(&buffer);
+	
+  // adding output pins SEGGER_RTT_printf(0,"\r\nadding output pins!\r\n");	
+	
+	// adding fifo buffers SEGGER_RTT_printf(0,"\r\nadding fifo buffers!\r\n");	
+	err_code = add_fifo();
 	APP_ERROR_CHECK(err_code);
 	
 	return;
