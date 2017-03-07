@@ -33,7 +33,7 @@
 #include "app_timer.h"
 #include "app_button.h"
 #include "ble_nus.h"
-#include "app_uart.h"
+//#include "app_uart.h"
 #include "app_util_platform.h"
 #include "bsp.h"
 #include "bsp_btn_ble.h"
@@ -41,6 +41,8 @@
 #include "sdk_config.h"
 #include "nrf_drv_gpiote.h"
 #include "bbs.h"
+//#include "spinlock.h"
+#include "char_conversion.h"
 
 #define IS_SRVC_CHANGED_CHARACT_PRESENT 0                                           /**< Include the service_changed characteristic. If not enabled, the server's database cannot be changed for the lifetime of the device. */
 
@@ -79,7 +81,6 @@
 
 static ble_nus_t                        m_nus;                                      /**< Structure to identify the Nordic UART Service. */
 static uint16_t                         m_conn_handle = BLE_CONN_HANDLE_INVALID;    /**< Handle of the current connection. */
-static bbs_t														m_bbs;
 
 static ble_uuid_t                       m_adv_uuids[] = {{BLE_UUID_NUS_SERVICE, NUS_SERVICE_UUID_TYPE}};  /**< Universally unique service identifier. */
 
@@ -142,19 +143,56 @@ static void gap_params_init(void)
 /**@snippet [Handling the data received over BLE] */
 static void nus_data_handler(ble_nus_t * p_nus, uint8_t * p_data, uint16_t length)
 {
-	switch (m_bbs_state) { 
-		
-		case RECEIVING: break;
-		
-		case WAIT_TO_RECEIVE:
-			for (uint32_t i = 0; i < length; i++) {
-				uint32_t err_code = raw_fifo_put(p_data[i]);
-				APP_ERROR_CHECK(err_code);
-				SEGGER_RTT_printf(0,"recieved char: %c \n",p_data[i]);
-			}
+	uint32_t err_code = NRF_SUCCESS;
+	int i = 0;
+	braille_char temp_braille;
+	while(i<length && err_code==NRF_SUCCESS) {
+		/*
+		//////////////////////////////////////////////
+		err_code = fifo_put(m_raw_fifo, p_data[i]);
+		switch (err_code) {
+			//successfully put p_data[i] into buffer
+			case NRF_SUCCESS:
+				SEGGER_RTT_printf(0,"placed %c into raw buffer\r\n",p_data[i]);
 			break;
+			
+			//buffer is full
+			case BUFF_FULL:
+				SEGGER_RTT_printf(0,"buffer full! (couldn't place %c in)\r\n",p_data[i]);
+			break;
+			
+			//probably should return an error, but nah
+			default: break;
 		}
-	return;
+		//////////////////////////////////////////////
+		*/
+		
+		
+		//convert raw character to braille character/s
+		temp_braille = char_2_braille(p_data[i]);
+		
+		//put converted character into the braille buffer
+		err_code = fifo_put(m_braille_fifo, temp_braille);
+		
+		switch (err_code) {
+			//successfully put p_data[i] into buffer
+			case NRF_SUCCESS:
+				SEGGER_RTT_printf(0,"placed %d into braille buffer\r\n",p_data[i]);
+			break;
+			
+			//buffer is full
+			case BUFF_FULL:
+				SEGGER_RTT_printf(0,"buffer full! (couldn't place %d in)\r\n",p_data[i]);
+			break;
+			
+			//probably should return an error, but nah
+			default: break;
+		}		
+		
+
+		//increments i
+		i++;
+	}
 }
 /**@snippet [Handling the data received over BLE] */
 

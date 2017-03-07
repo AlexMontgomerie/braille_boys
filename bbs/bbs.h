@@ -1,9 +1,14 @@
 /** Braille Boys Hardware drivers and general device structures
 */
+/* NEXT PERSON TO TOUCH THE FUCKING INCLUDE GUARD, *
+ * I EAT YOUR FUCKING FIRSTBORN - henry            */
+#ifndef _bbs_h
+#define _bbs_h
 
 #include "sdk_config.h"
 #include "nrf_drv_gpiote.h"
 #include "SEGGER_RTT.h"
+#include "fifo.h"
 
 #define BRAILLE_MOTOR_0			21	//pin assignment for motor 0
 #define BRAILLE_MOTOR_1			22	//pin assignment for motor 1
@@ -19,8 +24,8 @@
 #define BRAILLE_INPUT_4 		4		//pin assignment for input of bit 4 for braille character
 #define BRAILLE_INPUT_5 		5		//pin assignment for input of bit 5 for braille character
 
-#define CONTROL_INPUT_0 		0		//pin assignment for control button 0
-#define CONTROL_INPUT_1 		1		//pin assignment for control button 1
+#define CONTROL_INPUT_0 		17		//pin assignment for control button 0
+#define CONTROL_INPUT_1 		18		//pin assignment for control button 1
 #define CONTROL_INPUT_2 		2		//pin assignment for control button 2
 #define CONTROL_INPUT_3 		3		//pin assignment for control button 3
 
@@ -30,55 +35,52 @@
  */ 
 typedef uint8_t braille_char;
 
-/**
-	Enumeration to define the current states of the glove
- */
-typedef enum
-{ 
-    RECEIVING,
-		WAIT_TO_RECEIVE
-} bbs_state_t;
 
 /**********************************************
 	Struct for holding current state of inputs
 	FIX ME do we need this??
- */
+ 
 typedef struct {
 	braille_char output;
 	braille_char input;
-	bbs_state_t state;
 } bbs_t;
-/**********************************************/
+*********************************************/
 
 /**
- * Structure of the fifo implimentation
- * TODO test the actual implimentation of this
+ * Global fifo structures
  */
-typedef struct
-{
-	uint8_t * p_start;
-	uint8_t * P_end;
-	uint32_t 	buf_size;
-	uint32_t 	read_pos;
-	uint32_t write_pos;
-} buffer_t;
+extern buffer_t *m_raw_fifo;
+extern buffer_t *m_braille_fifo;
+
+/**
+ * Static memory initialisation for buffers
+ */
+extern uint8_t	raw_buf[BUFF_SIZE];
+extern uint8_t 	braille_buf[BUFF_SIZE];
+
+/**
+ * Pointers to characters being pulled from the buffers
+ */
+extern uint8_t* p_fifo_raw_character;
+extern uint8_t* p_fifo_braille_character;
+
+
 
 /**
  * List of function references
 */
+extern void pin_message_event_handler(nrf_drv_gpiote_pin_t pin, nrf_gpiote_polarity_t action);
 
-void pin_rx_event_handler(nrf_drv_gpiote_pin_t pin, nrf_gpiote_polarity_t action);
+extern void pin_control_event_handler(nrf_drv_gpiote_pin_t pin, nrf_gpiote_polarity_t action);
 
-void pin_tx_event_handler(nrf_drv_gpiote_pin_t pin, nrf_gpiote_polarity_t action);
+extern uint32_t raw_fifo_put(uint8_t byte);
 
-uint32_t raw_fifo_put(uint8_t byte);
+extern uint32_t raw_fifo_get(uint8_t * p_byte);
 
-uint32_t raw_fifo_get(uint8_t * p_byte);
+extern uint32_t braille_fifo_put(uint8_t byte);
 
-uint32_t braille_fifo_put(uint8_t byte);
+extern uint32_t braille_fifo_get(uint8_t * p_byte);
 
-uint32_t braille_fifo_get(uint8_t * p_byte);
+extern void bbs_init(void);
 
-void bbs_init(void);
-
-static bbs_state_t	m_bbs_state;
+#endif
