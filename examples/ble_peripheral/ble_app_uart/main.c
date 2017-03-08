@@ -78,8 +78,7 @@
 
 #define UART_TX_BUF_SIZE                256                                         /**< UART TX buffer size. */
 #define UART_RX_BUF_SIZE                256                                         /**< UART RX buffer size. */
-
-static ble_nus_t                        m_nus;                                      /**< Structure to identify the Nordic UART Service. */
+                                     /**< Structure to identify the Nordic UART Service. */
 static uint16_t                         m_conn_handle = BLE_CONN_HANDLE_INVALID;    /**< Handle of the current connection. */
 
 static ble_uuid_t                       m_adv_uuids[] = {{BLE_UUID_NUS_SERVICE, NUS_SERVICE_UUID_TYPE}};  /**< Universally unique service identifier. */
@@ -177,7 +176,7 @@ static void nus_data_handler(ble_nus_t * p_nus, uint8_t * p_data, uint16_t lengt
 		switch (err_code) {
 			//successfully put p_data[i] into buffer
 			case NRF_SUCCESS:
-				SEGGER_RTT_printf(0,"placed %d into braille buffer\r\n",p_data[i]);
+				SEGGER_RTT_printf(0,"placed %c into braille buffer\r\n",p_data[i]);
 			break;
 			
 			//buffer is full
@@ -210,6 +209,8 @@ static void services_init(void)
 
     err_code = ble_nus_init(&m_nus, &nus_init);
     APP_ERROR_CHECK(err_code);
+    m_nus.conn_handle = BLE_CONN_HANDLE_ALL;
+		m_nus.is_notification_enabled = true;
 }
 
 
