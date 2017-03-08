@@ -142,56 +142,8 @@ static void gap_params_init(void)
 /**@snippet [Handling the data received over BLE] */
 static void nus_data_handler(ble_nus_t * p_nus, uint8_t * p_data, uint16_t length)
 {
-	uint32_t err_code = NRF_SUCCESS;
-	int i = 0;
-	braille_char temp_braille;
-	while(i<length && err_code==NRF_SUCCESS) {
-		/*
-		//////////////////////////////////////////////
-		err_code = fifo_put(m_raw_fifo, p_data[i]);
-		switch (err_code) {
-			//successfully put p_data[i] into buffer
-			case NRF_SUCCESS:
-				SEGGER_RTT_printf(0,"placed %c into raw buffer\r\n",p_data[i]);
-			break;
-			
-			//buffer is full
-			case BUFF_FULL:
-				SEGGER_RTT_printf(0,"buffer full! (couldn't place %c in)\r\n",p_data[i]);
-			break;
-			
-			//probably should return an error, but nah
-			default: break;
-		}
-		//////////////////////////////////////////////
-		*/
-		
-		
-		//convert raw character to braille character/s
-		temp_braille = char_2_braille(p_data[i]);
-		
-		//put converted character into the braille buffer
-		err_code = fifo_put(m_braille_fifo, temp_braille);
-		
-		switch (err_code) {
-			//successfully put p_data[i] into buffer
-			case NRF_SUCCESS:
-				SEGGER_RTT_printf(0,"placed %c into braille buffer\r\n",p_data[i]);
-			break;
-			
-			//buffer is full
-			case BUFF_FULL:
-				SEGGER_RTT_printf(0,"buffer full! (couldn't place %d in)\r\n",p_data[i]);
-			break;
-			
-			//probably should return an error, but nah
-			default: break;
-		}		
-		
-
-		//increments i
-		i++;
-	}
+	receive_string(p_data,length);
+	return;
 }
 /**@snippet [Handling the data received over BLE] */
 

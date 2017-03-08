@@ -27,26 +27,18 @@ Project File Date:  03/07/2017
 <h2>Output:</h2>
 *** Using Compiler 'V5.06 update 4 (build 422)', folder: 'C:\Keil_v5\ARM\ARMCC\Bin'
 Build target 'nrf51422_xxac'
-compiling bbs.c...
-..\..\..\..\..\..\fifo\fifo.h(36): warning:  #1-D: last line of file ends without a newline
-  #endif // !defined(_fifo_h)
-..\..\..\..\..\..\bbs\bbs.h(89): warning:  #1-D: last line of file ends without a newline
-  #endif
-..\..\..\..\..\..\char_conversion\char_conversion.h(6): warning:  #1-D: last line of file ends without a newline
+compiling char_conversion.c...
+..\..\..\..\..\..\char_conversion\char_conversion.h(15): warning:  #1-D: last line of file ends without a newline
   uint8_t braille_2_char(uint8_t braille, uint8_t modifier);
-..\..\..\..\..\..\bbs\bbs.c(70): warning:  #940-D: missing return statement at end of non-void function "clear_msg" 
+..\..\..\..\..\..\char_conversion\char_conversion.c(113): warning:  #1-D: last line of file ends without a newline
   }
-..\..\..\..\..\..\bbs\bbs.c(77): warning:  #550-D: variable "err_code"  was set but never used
-        uint32_t err_code;
-..\..\..\..\..\..\bbs\bbs.c(132): warning:  #177-D: variable "err_code"  was declared but never referenced
-        uint32_t err_code;
-..\..\..\..\..\..\bbs\bbs.c(391): warning:  #177-D: variable "err_code"  was declared but never referenced
-        uint32_t err_code;
-..\..\..\..\..\..\bbs\bbs.c: 7 warnings, 0 errors
+..\..\..\..\..\..\char_conversion\char_conversion.c(79): warning:  #177-D: variable "capital_lookup"  was declared but never referenced
+  static const uint8_t capital_lookup[64] =
+..\..\..\..\..\..\char_conversion\char_conversion.c: 3 warnings, 0 errors
 linking...
-Program Size: Code=12372 RO-data=548 RW-data=180 ZI-data=5468  
+Program Size: Code=12424 RO-data=548 RW-data=180 ZI-data=5468  
 FromELF: creating hex file...
-".\_build\nrf51422_xxac.axf" - 0 Error(s), 7 Warning(s).
+".\_build\nrf51422_xxac.axf" - 0 Error(s), 3 Warning(s).
 
 <h2>Software Packages used:</h2>
 
@@ -75,7 +67,7 @@ Package Vendor: NordicSemiconductor
       Source file:   Device\Source\system_nrf51.c
       Include file:  Device\Include\system_nrf51.h
       Source file:   Device\Source\arm\arm_startup_nrf51.s
-Build Time Elapsed:  00:00:04
+Build Time Elapsed:  00:00:02
 </pre>
 </body>
 </html>

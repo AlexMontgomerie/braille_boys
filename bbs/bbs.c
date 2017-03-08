@@ -81,6 +81,45 @@ void update_msg_buf(void) {
 	return;
 }
 
+void receive_string(uint8_t * p_data, uint16_t length) {
+	
+	//initialise the modifier buffer
+	uint8_t mod_buf[BUFF_SIZE];
+	uint8_t * p_mod = &mod_buf[0];
+	
+	modifier_parser(p_data,length,p_mod);
+	
+	uint32_t err_code = NRF_SUCCESS;
+	int index = 0;
+	braille_char temp_braille;
+	while(index<length && err_code==NRF_SUCCESS) {
+
+		//convert raw character to braille character/s
+		temp_braille = char_2_braille(p_data[index]);
+		
+
+			//if it's not lower case, put in the buffer
+		if(p_mod[index]!=LOWER_CASE_MOD){
+			err_code = fifo_put(m_braille_fifo, p_mod[index]);
+		}
+		if(err_code == BUFF_FULL) {
+			break;
+		}
+		
+		//put converted character into the braille buffer
+		err_code = fifo_put(m_braille_fifo, temp_braille);
+		if(err_code == BUFF_FULL) {
+			break;
+		}	
+		
+		//increments i
+		index++;
+	}
+	SEGGER_RTT_printf(0,"Put this in braille buffer ");
+	log_string(p_data,index);
+	return; 
+}
+
 void receive_char(void) {
 	uint32_t err_code;
 	err_code = fifo_get(m_braille_fifo,p_braille_char);

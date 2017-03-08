@@ -14,6 +14,32 @@ notes
 #include "char_conversion.h"
 #include <stdint.h>
 
+void modifier_parser(uint8_t * p_string, uint16_t string_length, uint8_t * p_mod) {
+	int index = 0;
+	uint8_t temp_mod = LOWER_CASE_MOD;
+	
+	//goes to the end of the message
+	while(index<string_length) {
+		//set modifier to lower case as default
+		temp_mod = LOWER_CASE_MOD;
+		
+		if(IS_CAPITAL(p_string[index])) {
+			temp_mod = UPPER_CASE_MOD;
+		}	
+		//if there is a number/punctuation, set to the numpunc modifier
+		if(IS_NUMPUNC(p_string[index])) {
+			temp_mod = NUMPUNC_MOD;
+		}
+		
+		p_mod[index] = temp_mod;
+		index++;
+	}
+	return;
+}
+
+
+
+
 uint8_t char_2_braille(char character){
 	
 	static const uint8_t braille_lookup[26] = {

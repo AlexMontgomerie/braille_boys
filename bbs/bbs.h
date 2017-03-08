@@ -82,6 +82,8 @@ uint32_t clear_output(void);
 
 uint32_t set_output(uint8_t * p_char);
 
+extern void receive_string(uint8_t * p_data, uint16_t length);
+
 void rxtx_toggle(void);
 
 extern void bbs_init(void);
