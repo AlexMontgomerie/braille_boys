@@ -209,8 +209,8 @@ static void services_init(void)
 
     err_code = ble_nus_init(&m_nus, &nus_init);
     APP_ERROR_CHECK(err_code);
-    m_nus.conn_handle = BLE_CONN_HANDLE_ALL;
-		m_nus.is_notification_enabled = true;
+    //m_nus.conn_handle = BLE_CONN_HANDLE_ALL;
+		//m_nus.is_notification_enabled = true;
 }
 
 

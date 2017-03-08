@@ -4,8 +4,9 @@
 #include "SEGGER_RTT.h"
 #include "fifo.h"
 #include "ble_nus.h"
+#include "char_conversion.h"
 
-ble_nus_t                        m_nus; 
+ble_nus_t m_nus; 
 
 /**
  * Global fifo structures
@@ -40,17 +41,42 @@ uint8_t* p_message_char = &temp_message_char;
 
 uint8_t BBS_STATUS = 0;
 
+void log_braille_status(void) {
+	SEGGER_RTT_printf(0,"Braille in: ");
+	
+	SEGGER_RTT_printf(0,"%d",BIT_CHECK(BBS_STATUS,5));
+	SEGGER_RTT_printf(0,"%d",BIT_CHECK(BBS_STATUS,4));
+	SEGGER_RTT_printf(0,"%d",BIT_CHECK(BBS_STATUS,3));
+	SEGGER_RTT_printf(0,"%d",BIT_CHECK(BBS_STATUS,2));
+	SEGGER_RTT_printf(0,"%d",BIT_CHECK(BBS_STATUS,1));
+	SEGGER_RTT_printf(0,"%d",BIT_CHECK(BBS_STATUS,0));
+	
+	SEGGER_RTT_printf(0,"\r\n");
+	return;
+}
+
+void log_string(uint8_t * p_string, uint16_t length) {
+	SEGGER_RTT_printf(0,"STRING: ");
+	int i = 0;
+	for(i=0;i<length;i++) {
+		SEGGER_RTT_printf(0,"%c",p_string[i]);
+	}
+	SEGGER_RTT_printf(0,"\r\n");
+	return;
+}
+
 uint32_t clear_msg(void){
 	BBS_STATUS &= ~MSG_BIT_MASK;
 }
 
 void update_msg_buf(void) {
 
-	SEGGER_RTT_printf(0,"Updating message buffer \r\n");
+	SEGGER_RTT_printf(0,"Updating message buffer with ");
+	log_braille_status();
 	
 	uint32_t err_code;
 	
-	err_code = fifo_put(m_message_fifo, BBS_STATUS & MSG_BIT_MASK);
+	err_code = fifo_put(m_message_fifo, braille_2_char(BBS_STATUS & MSG_BIT_MASK,48));
 	err_code = clear_msg();
 	return;
 }
@@ -88,21 +114,21 @@ SEGGER_RTT_printf(0,"Sending String \r\n");
 	while(err_code!=BUFF_EMPTY) {
 		err_code = fifo_get(m_message_fifo, p_message_char);
 		if(err_code == BUFF_EMPTY) break;
-		SEGGER_RTT_printf(0,"message: %d \r\n", *p_message_char);
 		*(p_string + (uint8_t)length) = *p_message_char;
-		SEGGER_RTT_printf(0,"string contains: %d \r\n",*(p_string + (uint8_t)length));
 		length++;
 	}
 	*(p_string + (uint8_t)length) = '\r';
 	length++;
 	*(p_string + (uint8_t)length) = '\n';
-	
+	SEGGER_RTT_printf(0,"Sending ");
+	log_string(p_string, length);
 	err_code = ble_nus_string_send(&m_nus, p_string, length);
 	SEGGER_RTT_printf(0,"sending error: %d \r\n",err_code);
 	return;
 }
 
 void pin_control_event_handler(nrf_drv_gpiote_pin_t pin, nrf_gpiote_polarity_t action) {
+#if	action == NRF_GPIOTE_POLARITY_LOTOHI
 	uint32_t err_code;
 	switch(pin) {
 		/**
@@ -139,9 +165,8 @@ void pin_control_event_handler(nrf_drv_gpiote_pin_t pin, nrf_gpiote_polarity_t a
 		break;
 		
 		default: break;
-		
-		
 	}
+#endif
 	return;
 }
 
@@ -151,9 +176,7 @@ void pin_control_event_handler(nrf_drv_gpiote_pin_t pin, nrf_gpiote_polarity_t a
  */
 
 void pin_message_event_handler(nrf_drv_gpiote_pin_t pin, nrf_gpiote_polarity_t action) {
-	//swtich on each pin
-	//set pin with corresponding bit of the input message
-	
+#if	action == NRF_GPIOTE_POLARITY_LOTOHI
 	switch(pin) {
 		
 		case BRAILLE_INPUT_0:
@@ -181,6 +204,7 @@ void pin_message_event_handler(nrf_drv_gpiote_pin_t pin, nrf_gpiote_polarity_t a
 			BIT_SET(BBS_STATUS,MSG_BIT_5);
 		break;		
 	}
+#endif
 	return;
 }
  
