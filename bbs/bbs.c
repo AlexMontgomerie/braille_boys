@@ -5,7 +5,10 @@
 #include "fifo.h"
 #include "ble_nus.h"
 #include "char_conversion.h"
+#include "bbs_logger.h"
+#include "bbs_gpio.h"
 
+//global nordic uart service type
 ble_nus_t m_nus; 
 
 /**
@@ -15,11 +18,9 @@ buffer_t temp_raw_buffer;
 buffer_t temp_braille_buffer;
 buffer_t temp_message_buffer;
 
-buffer_t* 	m_raw_fifo = &temp_raw_buffer;
-buffer_t* 	m_braille_fifo = &temp_braille_buffer;
-buffer_t*		m_message_fifo = &temp_message_buffer;
-
-
+buffer_t * m_raw_fifo = &temp_raw_buffer;
+buffer_t * m_braille_fifo = &temp_braille_buffer;
+buffer_t * m_message_fifo = &temp_message_buffer;
 
 /**
  * Static memory initialisation for buffers
@@ -35,53 +36,41 @@ uint8_t temp_raw_char;
 uint8_t temp_braille_char;
 uint8_t temp_message_char;
 
-uint8_t* p_raw_char = &temp_raw_char;
-uint8_t* p_braille_char = &temp_braille_char;
-uint8_t* p_message_char = &temp_message_char;
+uint8_t * p_raw_char = &temp_raw_char;
+uint8_t * p_braille_char = &temp_braille_char;
+uint8_t * p_message_char = &temp_message_char;
 
+//status variable [TXRX,temp,message input]
 uint8_t BBS_STATUS = 0;
 
-void log_braille_status(void) {
-	SEGGER_RTT_printf(0,"Braille in: ");
-	
-	SEGGER_RTT_printf(0,"%d",BIT_CHECK(BBS_STATUS,5));
-	SEGGER_RTT_printf(0,"%d",BIT_CHECK(BBS_STATUS,4));
-	SEGGER_RTT_printf(0,"%d",BIT_CHECK(BBS_STATUS,3));
-	SEGGER_RTT_printf(0,"%d",BIT_CHECK(BBS_STATUS,2));
-	SEGGER_RTT_printf(0,"%d",BIT_CHECK(BBS_STATUS,1));
-	SEGGER_RTT_printf(0,"%d",BIT_CHECK(BBS_STATUS,0));
-	
-	SEGGER_RTT_printf(0,"\r\n");
-	return;
-}
-
-void log_string(uint8_t * p_string, uint16_t length) {
-	SEGGER_RTT_printf(0,"STRING: ");
-	int i = 0;
-	for(i=0;i<length;i++) {
-		SEGGER_RTT_printf(0,"%c",p_string[i]);
-	}
-	SEGGER_RTT_printf(0,"\r\n");
-	return;
-}
-
-uint32_t clear_msg(void){
+/**
+ *
+ */
+void clear_msg(void) {
 	BBS_STATUS &= ~MSG_BIT_MASK;
+	return;
 }
 
+
+/**
+ *
+ */
 void update_msg_buf(void) {
 
 	SEGGER_RTT_printf(0,"Updating message buffer with ");
-	log_braille_status();
+	log_braille_char(BBS_STATUS);
 	
 	uint32_t err_code;
 	
 	err_code = fifo_put(m_message_fifo, braille_2_char(BBS_STATUS & MSG_BIT_MASK,48));
-	err_code = clear_msg();
+	clear_msg();
 	return;
 }
 
-void receive_string(uint8_t * p_data, uint16_t length) {
+/**
+ *
+ */
+void bluetooth_receive(uint8_t * p_data, uint16_t length) {
 	
 	//initialise the modifier buffer
 	uint8_t mod_buf[BUFF_SIZE];
@@ -92,11 +81,12 @@ void receive_string(uint8_t * p_data, uint16_t length) {
 	uint32_t err_code = NRF_SUCCESS;
 	int index = 0;
 	braille_char temp_braille;
+	
 	while(index<length && err_code==NRF_SUCCESS) {
 
 		//convert raw character to braille character/s
 		temp_braille = char_2_braille(p_data[index]);
-		
+		SEGGER_RTT_printf(0,"temp braille value: %c\r\n",temp_braille);
 
 			//if it's not lower case, put in the buffer
 		if(p_mod[index]!=LOWER_CASE_MOD){
@@ -120,7 +110,10 @@ void receive_string(uint8_t * p_data, uint16_t length) {
 	return; 
 }
 
-void receive_char(void) {
+/**
+ *
+ */
+void send_to_motor(void) {
 	uint32_t err_code;
 	err_code = fifo_get(m_braille_fifo,p_braille_char);
 	switch(err_code) {
@@ -131,16 +124,21 @@ void receive_char(void) {
 		
 		//have got character out of buffer
 		case NRF_SUCCESS:
+			SEGGER_RTT_printf(0,"removing the char from buffer: %c\r\n", *p_braille_char);
 			err_code = clear_output();
 			err_code = set_output(p_braille_char);
 		break;
 		
 		default: break;
-		
 	}
+	
+	return;
 }
 
-void send_string(void) {
+/**
+ *
+ */
+void send_string_to_phone(void) {
 	
 SEGGER_RTT_printf(0,"Sending String \r\n");
 	
@@ -166,8 +164,11 @@ SEGGER_RTT_printf(0,"Sending String \r\n");
 	return;
 }
 
+/**
+ *
+ */
 void pin_control_event_handler(nrf_drv_gpiote_pin_t pin, nrf_gpiote_polarity_t action) {
-#if	action == NRF_GPIOTE_POLARITY_LOTOHI
+if(action == NRF_GPIOTE_POLARITY_LOTOHI) {
 	uint32_t err_code;
 	switch(pin) {
 		/**
@@ -184,7 +185,7 @@ void pin_control_event_handler(nrf_drv_gpiote_pin_t pin, nrf_gpiote_polarity_t a
 			
 			//if in RX mode ...
 			if(BIT_CHECK(BBS_STATUS,RXTX_MASK)) {
-				receive_char();
+				send_to_motor();
 			}
 			
 			//else in TX mode ...
@@ -196,7 +197,7 @@ void pin_control_event_handler(nrf_drv_gpiote_pin_t pin, nrf_gpiote_polarity_t a
 		case CONTROL_INPUT_2:
 			//if in TX mode ...
 			if(!BIT_CHECK(BBS_STATUS,RXTX_MASK)) {
-				send_string();
+				send_string_to_phone();
 			}			
 		break;
 
@@ -205,7 +206,7 @@ void pin_control_event_handler(nrf_drv_gpiote_pin_t pin, nrf_gpiote_polarity_t a
 		
 		default: break;
 	}
-#endif
+}
 	return;
 }
 
@@ -213,47 +214,103 @@ void pin_control_event_handler(nrf_drv_gpiote_pin_t pin, nrf_gpiote_polarity_t a
  *	Event handler to update input pins
  *	@brief will determine input message
  */
-
 void pin_message_event_handler(nrf_drv_gpiote_pin_t pin, nrf_gpiote_polarity_t action) {
-#if	action == NRF_GPIOTE_POLARITY_LOTOHI
-	switch(pin) {
-		
-		case BRAILLE_INPUT_0:
-			SEGGER_RTT_printf(0,"Setting message bit 0 \r\n");
-			BIT_SET(BBS_STATUS,MSG_BIT_0);
-		break;
-		
-		case BRAILLE_INPUT_1:
-			BIT_SET(BBS_STATUS,MSG_BIT_1);
-		break;
-		
-		case BRAILLE_INPUT_2:
-			BIT_SET(BBS_STATUS,MSG_BIT_2);
-		break;
 
-		case BRAILLE_INPUT_3:
-			BIT_SET(BBS_STATUS,MSG_BIT_3);
-		break;
+	if(action == NRF_GPIOTE_POLARITY_LOTOHI) {
+		switch(pin) {
 		
-		case BRAILLE_INPUT_4:
-			BIT_SET(BBS_STATUS,MSG_BIT_4);
-		break;
+			case BRAILLE_INPUT_0:
+				BIT_SET(BBS_STATUS,MSG_BIT_0);
+			break;
 		
-		case BRAILLE_INPUT_5:
-			BIT_SET(BBS_STATUS,MSG_BIT_5);
-		break;		
+			case BRAILLE_INPUT_1:
+				BIT_SET(BBS_STATUS,MSG_BIT_1);
+			break;
+		
+			case BRAILLE_INPUT_2:
+				BIT_SET(BBS_STATUS,MSG_BIT_2);
+			break;
+
+			case BRAILLE_INPUT_3:
+				BIT_SET(BBS_STATUS,MSG_BIT_3);
+			break;
+		
+			case BRAILLE_INPUT_4:
+				BIT_SET(BBS_STATUS,MSG_BIT_4);
+			break;
+		
+			case BRAILLE_INPUT_5:
+				BIT_SET(BBS_STATUS,MSG_BIT_5);
+			break;		
+		}
 	}
-#endif
 	return;
 }
  
 
 /** 
- *	Initialising the input pins
- *	FIX ME its a bit messy, can make prettier
+ *	Initialising the control input pins
+ *	@output error code
  */
+uint32_t add_control_input_pins(void)
+{
+	nrf_drv_gpiote_in_config_t config = GPIOTE_CONFIG_IN_SENSE_LOTOHI(true);
+	config.pull = NRF_GPIO_PIN_PULLUP;
+	
+	uint32_t err_code;
+	
+	/**
+	 *	Initialise all the control input pins
+	 */
+#ifdef CONTROL_INPUT_0	 
+	//for CONTROL_0
+	err_code = nrf_drv_gpiote_in_init(CONTROL_INPUT_0, &config, pin_control_event_handler);
+	if (err_code != NRF_SUCCESS)
+	{	
+		SEGGER_RTT_printf(0,"error code, %d \r\n",err_code);
+		APP_ERROR_CHECK(err_code);
+	}
+	nrf_drv_gpiote_in_event_enable(CONTROL_INPUT_0, true);	
+#endif
+	
+#ifdef CONTROL_INPUT_1	
+	//for CONTROL_1
+	err_code = nrf_drv_gpiote_in_init(CONTROL_INPUT_1, &config, pin_control_event_handler);
+	if (err_code != NRF_SUCCESS)
+	{	
+		APP_ERROR_CHECK(err_code);
+	}
+	nrf_drv_gpiote_in_event_enable(CONTROL_INPUT_1, true);	
+#endif
+	
+#ifdef CONTROL_INPUT_2
+	//for CONTROL_2
+	err_code = nrf_drv_gpiote_in_init(CONTROL_INPUT_2, &config, pin_control_event_handler);
+	if (err_code != NRF_SUCCESS)
+	{	
+		APP_ERROR_CHECK(err_code);
+	}
+	nrf_drv_gpiote_in_event_enable(CONTROL_INPUT_2, true);	
+#endif
+	
+#ifdef CONTROL_INPUT_3
+	//for CONTROL_3
+	err_code = nrf_drv_gpiote_in_init(CONTROL_INPUT_3, &config, pin_control_event_handler);
+	if (err_code != NRF_SUCCESS)
+	{	
+		APP_ERROR_CHECK(err_code);
+	}
+	nrf_drv_gpiote_in_event_enable(CONTROL_INPUT_3, true);
+#endif
+	
+	return err_code;
+}
 
-uint32_t add_input_pins(void)
+/** 
+ *	Initialising the message input pins
+ *	@output error code
+ */
+uint32_t add_message_input_pins(void)
 {
 	nrf_drv_gpiote_in_config_t config = GPIOTE_CONFIG_IN_SENSE_LOTOHI(true);
 	config.pull = NRF_GPIO_PIN_PULLUP;
@@ -264,7 +321,7 @@ uint32_t add_input_pins(void)
 	 *	Initialise all the message input pins
 	 */
 	
-	
+#ifdef BRAILLE_INPUT_0	
 	//for INPUT_0
 	err_code = nrf_drv_gpiote_in_init(BRAILLE_INPUT_0, &config, pin_message_event_handler);
 	if (err_code != NRF_SUCCESS)
@@ -272,8 +329,9 @@ uint32_t add_input_pins(void)
 		APP_ERROR_CHECK(err_code);
 	}
 	nrf_drv_gpiote_in_event_enable(BRAILLE_INPUT_0, true);
-
-/*
+#endif
+	
+#ifdef BRAILLE_INPUT_1
 	//for INPUT_1
 	err_code = nrf_drv_gpiote_in_init(BRAILLE_INPUT_1, &config, pin_message_event_handler);
 	if (err_code != NRF_SUCCESS)
@@ -281,78 +339,48 @@ uint32_t add_input_pins(void)
 		APP_ERROR_CHECK(err_code);
 	}
 	nrf_drv_gpiote_in_event_enable(BRAILLE_INPUT_1, true);	
-
+#endif
 	
+#ifdef BRAILLE_INPUT_2	
 	//for INPUT_2
-	err_code = nrf_drv_gpiote_in_init(BRAILLE_INPUT_2, &config, pin_tx_event_handler);
+	err_code = nrf_drv_gpiote_in_init(BRAILLE_INPUT_2, &config, pin_message_event_handler);
 	if (err_code != NRF_SUCCESS)
 	{	
 		APP_ERROR_CHECK(err_code);
 	}
-	nrf_drv_gpiote_in_event_enable(BRAILLE_INPUT_2, true);		
+	nrf_drv_gpiote_in_event_enable(BRAILLE_INPUT_2, true);
+#endif
+
+#ifdef BRAILLE_INPUT_3	
 	//for INPUT_3
-	err_code = nrf_drv_gpiote_in_init(BRAILLE_INPUT_3, &config, pin_tx_event_handler);
+	err_code = nrf_drv_gpiote_in_init(BRAILLE_INPUT_3, &config, pin_message_event_handler);
 	if (err_code != NRF_SUCCESS)
 	{	
 		APP_ERROR_CHECK(err_code);
 	}
 	nrf_drv_gpiote_in_event_enable(BRAILLE_INPUT_3, true);
+#endif
 
-	
+#ifdef BRAILLE_INPUT_4	
 	//for INPUT_4
-	err_code = nrf_drv_gpiote_in_init(BRAILLE_INPUT_4, &config, pin_tx_event_handler);
+	err_code = nrf_drv_gpiote_in_init(BRAILLE_INPUT_4, &config, pin_message_event_handler);
 	if (err_code != NRF_SUCCESS)
 	{	
 		APP_ERROR_CHECK(err_code);
 	}
 	nrf_drv_gpiote_in_event_enable(BRAILLE_INPUT_4, true);	
+#endif
+	
+#ifdef BRAILLE_INPUT_5	
 	//for INPUT_5
-	err_code = nrf_drv_gpiote_in_init(BRAILLE_INPUT_5, &config, pin_tx_event_handler);
+	err_code = nrf_drv_gpiote_in_init(BRAILLE_INPUT_5, &config, pin_message_event_handler);
 	if (err_code != NRF_SUCCESS)
 	{	
 		APP_ERROR_CHECK(err_code);
 	}
 	nrf_drv_gpiote_in_event_enable(BRAILLE_INPUT_5, true);	
-	*/
+#endif	
 	
-	/**
-	 *	Initialise all the control input pins
-	 */
-	//for CONTROL_0
-	err_code = nrf_drv_gpiote_in_init(CONTROL_INPUT_0, &config, pin_control_event_handler);
-	if (err_code != NRF_SUCCESS)
-	{	
-		APP_ERROR_CHECK(err_code);
-	}
-	nrf_drv_gpiote_in_event_enable(CONTROL_INPUT_0, true);	
-	
-	
-	//for CONTROL_1
-	err_code = nrf_drv_gpiote_in_init(CONTROL_INPUT_1, &config, pin_control_event_handler);
-	if (err_code != NRF_SUCCESS)
-	{	
-		APP_ERROR_CHECK(err_code);
-	}
-	nrf_drv_gpiote_in_event_enable(CONTROL_INPUT_1, true);	
-	
-	
-	//for CONTROL_2
-	err_code = nrf_drv_gpiote_in_init(CONTROL_INPUT_2, &config, pin_control_event_handler);
-	if (err_code != NRF_SUCCESS)
-	{	
-		APP_ERROR_CHECK(err_code);
-	}
-	nrf_drv_gpiote_in_event_enable(CONTROL_INPUT_2, true);	
-
-/*	
-	//for CONTROL_3
-	err_code = nrf_drv_gpiote_in_init(CONTROL_INPUT_3, &config, pin_control_event_handler);
-	if (err_code != NRF_SUCCESS)
-	{	
-		APP_ERROR_CHECK(err_code);
-	}
-	nrf_drv_gpiote_in_event_enable(CONTROL_INPUT_3, true);
-	*/
 	return err_code;
 }
 
@@ -362,7 +390,7 @@ uint32_t add_input_pins(void)
 
 uint32_t add_output_pins(void)
 {
-	//FIX ME
+
 	uint32_t err_code;
 	
 	nrf_drv_gpiote_out_config_t config = GPIOTE_CONFIG_OUT_SIMPLE(true);
@@ -394,7 +422,7 @@ uint32_t add_output_pins(void)
 	{	
 		APP_ERROR_CHECK(err_code);
 	}
-	/*
+
 	//MOTOR 4
 	err_code = nrf_drv_gpiote_out_init(BRAILLE_MOTOR_4, &config);
 	if (err_code != NRF_SUCCESS)
@@ -408,9 +436,13 @@ uint32_t add_output_pins(void)
 	{	
 		APP_ERROR_CHECK(err_code);
 	}
-	*/
+
 	return err_code;
 }
+
+/**
+ *	Function to clear the pin outputs
+ */
 
 uint32_t clear_output(void) {
 	
@@ -419,49 +451,89 @@ uint32_t clear_output(void) {
 	nrf_drv_gpiote_out_clear(BRAILLE_MOTOR_1);
 	nrf_drv_gpiote_out_clear(BRAILLE_MOTOR_2);
 	nrf_drv_gpiote_out_clear(BRAILLE_MOTOR_3);
-	/*
 	nrf_drv_gpiote_out_clear(BRAILLE_MOTOR_4);
 	nrf_drv_gpiote_out_clear(BRAILLE_MOTOR_5);
-	*/
+
 	return NRF_SUCCESS;
 }
+
+/**
+ *	Function to set pin outputs
+ *	@input pointer to character for pin inputs
+ *	@output error code
+ */
 
 uint32_t set_output(uint8_t * p_char) {
 	uint32_t err_code;
+	SEGGER_RTT_printf(0,"Writing to ouptut (single char)");
 	
+	//sending bit 0 to motor 0
 	if(BIT_CHECK(*p_char,0)) {
 		nrf_drv_gpiote_out_set(BRAILLE_MOTOR_0);
 	}
+	else {
+		nrf_drv_gpiote_out_clear(BRAILLE_MOTOR_0);
+	}
 	
+	//sending bit 1 to motor 1
 	if(BIT_CHECK(*p_char,1)) {
 		nrf_drv_gpiote_out_set(BRAILLE_MOTOR_1);
 	}
+	else {
+		nrf_drv_gpiote_out_clear(BRAILLE_MOTOR_1);
+	}
 		
+	//sending bit 2 to motor 2
 	if(BIT_CHECK(*p_char,2)) {
 		nrf_drv_gpiote_out_set(BRAILLE_MOTOR_2);
 	}
+	else {
+		nrf_drv_gpiote_out_clear(BRAILLE_MOTOR_2);
+	}
 		
+	//sending bit 3 to motor 3
 	if(BIT_CHECK(*p_char,3)) {
 		nrf_drv_gpiote_out_set(BRAILLE_MOTOR_3);
 	}
-	/*
+	else {
+		nrf_drv_gpiote_out_clear(BRAILLE_MOTOR_3);
+	}
+	
+	//sending bit 4 to motor 4
 	if(BIT_CHECK(*p_char,4)) {
-		nrf_drv_gpiote_out_set(BRAILLE_MOTOR_0);
+		nrf_drv_gpiote_out_set(BRAILLE_MOTOR_4);
+	}
+	else {
+		nrf_drv_gpiote_out_clear(BRAILLE_MOTOR_4);
 	}
 		
+	//sending bit 5 to motor 5
 	if(BIT_CHECK(*p_char,5)) {
-		nrf_drv_gpiote_out_set(BRAILLE_MOTOR_0);
+		nrf_drv_gpiote_out_set(BRAILLE_MOTOR_5);
 	}
-	*/
+	else {
+		nrf_drv_gpiote_out_clear(BRAILLE_MOTOR_5);
+	}
+
+	//debug message
+	SEGGER_RTT_printf(0,"Motor output, ");
+	log_braille_char(*p_char);
+	
 	return NRF_SUCCESS;
 }
 
+/**
+ *	Function to toggle the RXTX status bit
+ */
 void rxtx_toggle(void) {
+	
+	//if it's currently in RX mode, set to TX mode
 	if(BIT_CHECK(BBS_STATUS,RXTX_MASK)) {
 		SEGGER_RTT_printf(0,"Now TX mode \r\n");
 		BIT_CLEAR(BBS_STATUS,RXTX_MASK);
 		clear_output();
 	}
+	//if it's currently in TX mode, set to RX mode
 	else {
 		SEGGER_RTT_printf(0,"Now RX mode \r\n");
 		BIT_SET(BBS_STATUS,RXTX_MASK);		
@@ -469,31 +541,33 @@ void rxtx_toggle(void) {
 }
 
 
-/** Function to initialise IO and braille service related buffers
-*/
-void bbs_init(void)
-{
-
-	//initialise gpio tasks and events
+/** 
+ *	Function to initialise IO and braille service related buffers
+ */
+void bbs_init(void) {
 	uint32_t err_code;
+	
+	//initialise gpio tasks and events
 	err_code = nrf_drv_gpiote_init();
   APP_ERROR_CHECK(err_code);
 
-	//adding input pins SEGGER_RTT_printf(0,"\r\nadding input pins!\r\n");	
-	err_code = add_input_pins();
+	//adding control pins 
+	err_code = add_control_input_pins();
 	APP_ERROR_CHECK(err_code);
 	
-  // adding output pins SEGGER_RTT_printf(0,"\r\nadding output pins!\r\n");	
+	//adding control pins 
+	err_code = add_message_input_pins();
+	APP_ERROR_CHECK(err_code);
+	
+  // adding output pins
 	err_code = add_output_pins();
 	APP_ERROR_CHECK(err_code);	
 	
-	// adding fifo buffers SEGGER_RTT_printf(0,"\r\nadding fifo buffers!\r\n");	
-	err_code = add_fifo(m_raw_fifo, &raw_buf[0]);
-	APP_ERROR_CHECK(err_code);
-	
+	//adding fifo buffer for the received braille characters
 	err_code = add_fifo(m_braille_fifo, &braille_buf[0]);
 	APP_ERROR_CHECK(err_code);
 
+	//adding fifo buffer for the pin input message characters
 	err_code = add_fifo(m_message_fifo, &message_buf[0]);
 	APP_ERROR_CHECK(err_code);
 	

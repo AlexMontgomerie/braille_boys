@@ -142,7 +142,7 @@ static void gap_params_init(void)
 /**@snippet [Handling the data received over BLE] */
 static void nus_data_handler(ble_nus_t * p_nus, uint8_t * p_data, uint16_t length)
 {
-	receive_string(p_data,length);
+	bluetooth_receive(p_data,length);
 	return;
 }
 /**@snippet [Handling the data received over BLE] */

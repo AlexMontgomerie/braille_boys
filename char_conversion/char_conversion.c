@@ -42,13 +42,38 @@ void modifier_parser(uint8_t * p_string, uint16_t string_length, uint8_t * p_mod
 
 uint8_t char_2_braille(char character){
 	
-	static const uint8_t braille_lookup[26] = {
+	static const uint8_t lower_case_lookup[26] = {
 		1, 3, 9, 25, 17, 11, 27, 19, 10, 		// a, b, c, d, e, f, g, h, i
 		26,	5, 7, 13, 29, 21, 15, 31, 23, 	// j, k, l, m, n, o, p, q, r
 		14,	30, 37, 39, 58, 45, 61, 53			// s, t, u, v, w, x, y, z			
 	};
-
-	return braille_lookup[character-96];
+	
+	static const uint8_t upper_case_lookup[26] = {
+		1, 3, 9, 25, 17, 11, 27, 19, 10, 		// A, B, C, D, E, F, G, H, I
+		26,	5, 7, 13, 29, 21, 15, 31, 23, 	// J, K, L, M, N, O, P, Q, R
+		14,	30, 37, 39, 58, 45, 61, 53			// S, T, U, V, W, X, Y, Z			
+	};
+	
+	static const uint8_t numpunc_lookup[32] = {
+		0, 22, 38, '\0', '\0', '\0', '\0', 4, 		//  , !, ", #, $, %, &, ',
+		54, 54, 20, '\0', 2, 36, 50, '\0',				// (, ), *, +, ,, -, ., /,
+		26, 1, 3, 9, 25, 17, 11, 27, 							// 0, 1, 2, 3, 4, 5, 6, 7,
+		19, 10, 18, 6, '\0', '\0', '\0', 38				// 8, 9, :, ;, <, =, >, ?,			
+	};
+	
+	if(IS_LOWER(character)) {
+		return lower_case_lookup[character-LOWER_CASE_OFFSET];
+	}
+	
+	if(IS_CAPITAL(character)) {
+		return upper_case_lookup[character-UPPER_CASE_OFFSET];
+	}
+	
+	if(IS_NUMPUNC(character)) {
+		return numpunc_lookup[character-NUMPUNC_OFFSET];
+	}
+	
+	return '\0';
 }
 
 uint8_t braille_2_char(uint8_t braille, uint8_t modifier)
@@ -92,13 +117,17 @@ static const uint8_t numpunc_lookup[64] =
 '0', '0', '0', '0', '0', '0', '0', '0'  // 56,57,58,59,60,61,62,63
 };
 
-if(modifier==48){
+if(modifier==LOWER_CASE_MOD){
 	return letter_lookup[braille];
 }
 
-if(modifier==60){
+if(modifier==UPPER_CASE_MOD){
+	return letter_lookup[braille];
+}
+
+if(modifier==NUMPUNC_MOD){
 	return numpunc_lookup[braille];
 }
 
-return '0';
+return '\0';
 }
