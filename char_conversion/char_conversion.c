@@ -122,7 +122,7 @@ uint8_t braille_2_char(uint8_t braille, uint8_t modifier)
 	}
 
 	if(modifier==UPPER_CASE_MOD){
-		return letter_lookup[braille];
+		return capital_lookup[braille];
 	}
 
 	if(modifier==NUMPUNC_MOD){
